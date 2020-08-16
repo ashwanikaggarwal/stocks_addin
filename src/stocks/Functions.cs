@@ -114,19 +114,12 @@ namespace stocks
 
                 for (int c = 2; c <= table.ListColumns.Count; c++)
                 {
-                    string text = table.Range[1, c].Text;
-
-                    if (Enum.TryParse<Field>(text, out Field result))
+                    if (Enum.TryParse(table.Range[1, c].Text, out Field field))
                     {
-                        if (fields.Contains(result) == false)
+                        if (fields.Contains(field) == false)
                         {
-                            fields.Add(result);
+                            fields.Add(field);
                         }
-                    }
-                    else
-                    {
-                        MessageBox.Show($"알 수 없는 Field가 있습니다! '{text}'", "error", buttons: MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
                     }
                 }
             }
@@ -145,9 +138,11 @@ namespace stocks
 
                     for (int c = 2; c <= table.ListColumns.Count; c++)
                     {
-                        Field field = Enum.Parse(typeof(Field), table.Range[1, c].Text);
+                        if (Enum.TryParse(table.Range[1, c].Text, out Field field))
+                        {
+                            table.Range[r, c].Value = data[field];
+                        }
 
-                        table.Range[r, c].Value = data[field];
                     }
                 }
             }
