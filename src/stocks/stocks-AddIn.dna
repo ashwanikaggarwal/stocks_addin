@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <DnaLibrary Name="stocks Add-In" RuntimeVersion="v4.0" xmlns="http://schemas.excel-dna.net/addin/2018/05/dnalibrary">
-  <ExternalLibrary Path="stocks.dll" ExplicitExports="false" LoadFromBytes="true" Pack="true" IncludePdb="false" />
+  <ExternalLibrary Path="stocks.dll" ExplicitExports="false" ComServer="true" LoadFromBytes="true" Pack="true" IncludePdb="false" />
 
   <!--
        The RuntimeVersion attribute above allows two settings:
