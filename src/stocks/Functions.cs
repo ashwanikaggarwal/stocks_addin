@@ -95,58 +95,63 @@ namespace stocks
                 }
             }
 
+            // table의 param 가져오기
+            List<string> tickers = new List<string>();
+            List<Field> fields = new List<Field>();
 
             foreach (ListObject table in tables)
             {
-                // table의 param 가져오기
-                List<string> tickers = new List<string>();
-                List<Field> fields = new List<Field>();
 
                 for (int r = 2; r <= 1 + table.ListRows.Count; r++)
                 {
-                    tickers.Add(table.Range[r, 1].Text);
+                    string text = table.Range[r, 1].Text;
+
+                    if (tickers.Contains(text) == false)
+                    {
+                        tickers.Add(text);
+                    }
                 }
 
                 for (int c = 2; c <= table.ListColumns.Count; c++)
                 {
-                    if (Enum.TryParse<Field>(table.Range[1, c].Text, out Field result))
+                    string text = table.Range[1, c].Text;
+
+                    if (Enum.TryParse<Field>(text, out Field result))
                     {
-                        fields.Add(result);
+                        if (fields.Contains(result) == false)
+                        {
+                            fields.Add(result);
+                        }
                     }
                     else
                     {
-                        MessageBox.Show($"알 수 없는 Field가 있습니다! '{table.Range[1, c].Text}'", "error", buttons: MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"알 수 없는 Field가 있습니다! '{text}'", "error", buttons: MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                 }
+            }
 
-                // yahoo finance 정보 가져오기 (비동기)
-                var securities = await Yahoo.Symbols(tickers.ToArray()).Fields(fields.ToArray()).QueryAsync();
+            // yahoo finance 정보 가져오기 (비동기)
+            var securities = await Yahoo.Symbols(tickers.ToArray()).Fields(fields.ToArray()).QueryAsync();
 
-                int row = 2;
+            foreach (ListObject table in tables)
+            {
                 // 시트에 정보 입력
-                foreach (string ticker in tickers)
+                for (int r = 2; r <= 1 + table.ListRows.Count; r++)
                 {
-                    int col = 2;
-
-                    if (securities.ContainsKey(ticker) == false)
-                    {
-                        continue;
-                    }
+                    string ticker = table.Range[r, 1].Text;
 
                     var data = securities[ticker];
 
-                    foreach (Field field in fields)
+                    for (int c = 2; c <= table.ListColumns.Count; c++)
                     {
-                        table.Range[row, col].Value = data[field];
+                        Field field = Enum.Parse(typeof(Field), table.Range[1, c].Text);
 
-                        ++col;
+                        table.Range[r, c].Value = data[field];
                     }
-
-                    ++row;
                 }
-
             }
+
         }
 
     }
