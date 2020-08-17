@@ -139,10 +139,11 @@ namespace stocks
                     }
                 }
             }
-            catch 
+            catch (Exception ex)
             {
                 // Do nothing
                 // 셀 값을 입력할 수 없는 타이밍이 때 걸린 경우.
+                Console.Write(ex.Message);
             }
         }
 
