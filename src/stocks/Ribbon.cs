@@ -1,47 +1,40 @@
-﻿using ExcelDna.Integration;
-using Microsoft.Office.Interop.Excel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Office.Interop.Excel;
+using Microsoft.Office.Tools.Ribbon;
 using YahooFinanceApi;
 
 namespace stocks
 {
-    public static class Functions
+    public partial class Ribbon
     {
         private const string FIELDS = "Ask,AskSize,AverageDailyVolume10Day,AverageDailyVolume3Month,Bid,BidSize,BookValue,Currency,DividendDate,EarningsTimestamp,EarningsTimestampEnd,EarningsTimestampStart,EpsForward,EpsTrailingTwelveMonths,Exchange,ExchangeDataDelayedBy,ExchangeTimezoneName,ExchangeTimezoneShortName,FiftyDayAverage,FiftyDayAverageChange,FiftyDayAverageChangePercent,FiftyTwoWeekHigh,FiftyTwoWeekHighChange,FiftyTwoWeekHighChangePercent,FiftyTwoWeekLow,FiftyTwoWeekLowChange,FiftyTwoWeekLowChangePercent,FinancialCurrency,ForwardPE,FullExchangeName,GmtOffSetMilliseconds,Language,LongName,Market,MarketCap,MarketState,MessageBoardId,PriceHint,PriceToBook,QuoteSourceName,QuoteType,RegularMarketChange,RegularMarketChangePercent,RegularMarketDayHigh,RegularMarketDayLow,RegularMarketOpen,RegularMarketPreviousClose,RegularMarketPrice,RegularMarketTime,RegularMarketVolume,PostMarketChange,PostMarketChangePercent,PostMarketPrice,PostMarketTime,SharesOutstanding,ShortName,SourceInterval,Symbol,Tradeable,TrailingAnnualDividendRate,TrailingAnnualDividendYield,TrailingPE,TwoHundredDayAverage,TwoHundredDayAverageChange,TwoHundredDayAverageChangePercent";
 
-        [ExcelFunction(Description = "My first .NET function")]
-        public static string GetStocksData(string ticker, string field)
+        private Timer timer = new Timer();
+
+        public Microsoft.Office.Interop.Excel.Application App => Globals.ThisAddIn.Application;
+
+        private void Ribbon_Load(object sender, RibbonUIEventArgs e)
         {
-            return $"{GetStocksDataAsync(ticker, field).Result}";
+            timer.Tick += Timer_Tick;
         }
 
-        public static async Task<dynamic> GetStocksDataAsync(string ticker, string field)
+        private void Timer_Tick(object sender, EventArgs e)
         {
-            var securities = await Yahoo.Symbols(ticker).Fields((Field)Enum.Parse(typeof(Field), field)).QueryAsync();
-            var aapl = securities[ticker];
-            var price = aapl[(Field)Enum.Parse(typeof(Field), field)];
-            
-            return price;
+            RefreashTableTaskAsync();
         }
 
-        public static Microsoft.Office.Interop.Excel.Application GetApp()
+        private void button1_Click(object sender, RibbonControlEventArgs e)
         {
-            return ExcelDnaUtil.Application as Microsoft.Office.Interop.Excel.Application;
-        }
-
-        [ExcelCommand(MenuName = "Stocks", MenuText = "Create Table")]
-        public static void CreateStocksTable()
-        {
-            Workbook wb = GetApp().ActiveWorkbook;
-            Worksheet ws = GetApp().ActiveSheet;
-            Range cell = GetApp().ActiveCell;
+            Workbook wb = App.ActiveWorkbook;
+            Worksheet ws = App.ActiveSheet;
+            Range cell = App.ActiveCell;
 
             if (wb == null)
             {
@@ -62,24 +55,22 @@ namespace stocks
 
         }
 
-        [ExcelCommand(MenuName = "Stocks", MenuText = "Refresh Tables", ShortCut = "^Q")]
-        public static void RefreshTables()
+        private void button2_Click(object sender, RibbonControlEventArgs e)
         {
-            Workbook wb = GetApp().ActiveWorkbook;
-            
+            Workbook wb = App.ActiveWorkbook;
+
             if (wb == null)
             {
                 MessageBox.Show("엑셀 파일을 먼저 실행해주세요.", "error", buttons: MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            ExcelAsyncTask.Run(RefreashTableTaskAsync);
+            RefreashTableTaskAsync();
         }
 
-
-        public async static Task RefreashTableTaskAsync()
+        public async void RefreashTableTaskAsync()
         {
-            Workbook wb = GetApp().ActiveWorkbook;
+            Workbook wb = App.ActiveWorkbook;
 
             // 모든 업데이트 테이블 가져오기
             List<ListObject> tables = new List<ListObject>();
@@ -126,28 +117,56 @@ namespace stocks
 
             // yahoo finance 정보 가져오기 (비동기)
             var securities = await Yahoo.Symbols(tickers.ToArray()).Fields(fields.ToArray()).QueryAsync();
-
-            foreach (ListObject table in tables)
+            
+            try
             {
-                // 시트에 정보 입력
-                for (int r = 2; r <= 1 + table.ListRows.Count; r++)
+                foreach (ListObject table in tables)
                 {
-                    string ticker = table.Range[r, 1].Text;
-
-                    var data = securities[ticker];
-
-                    for (int c = 2; c <= table.ListColumns.Count; c++)
+                    // 시트에 정보 입력
+                    for (int r = 2; r <= 1 + table.ListRows.Count; r++)
                     {
-                        if (Enum.TryParse(table.Range[1, c].Text, out Field field))
-                        {
-                            table.Range[r, c].Value = data[field];
-                        }
+                        string ticker = table.Range[r, 1].Text;
 
+                        var data = securities[ticker];
+
+                        for (int c = 2; c <= table.ListColumns.Count; c++)
+                        {
+                            if (Enum.TryParse(table.Range[1, c].Text, out Field field))
+                            {
+                                table.Range[r, c].Value = data[field];
+                            }
+                        }
                     }
                 }
             }
-
+            catch 
+            {
+                // Do nothing
+                // 셀 값을 입력할 수 없는 타이밍이 때 걸린 경우.
+            }
         }
 
+        private void toggleButton1_Click(object sender, RibbonControlEventArgs e)
+        {
+            if (this.toggleButton1.Checked)
+            {
+                // 최소 0.5초
+                if (int.TryParse(editBox1.Text, out int result))
+                {
+                    timer.Interval = Math.Max(result, 500);
+                }
+                else
+                {
+                    timer.Interval = 1000;
+                }
+
+                editBox1.Text = timer.Interval.ToString();
+                timer.Start();
+            }
+            else
+            {
+                timer.Stop();
+            }
+        }
     }
 }
